@@ -40,3 +40,28 @@ body {
   stroke-width: 1px;
   pointer-events: auto;
 }
+
+/* Time filter controls */
+.time-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#time-slider {
+  width: 250px;
+  cursor: pointer;
+}
+
+#selected-time,
+#any-time {
+  display: block;
+  min-height: 1.2em;
+}
+
+#any-time {
+  color: #777;
+  font-style: italic;
+}

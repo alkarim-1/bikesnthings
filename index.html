@@ -19,6 +19,21 @@
 
     <!-- Map JavaScript -->
     <script src="map.js" type="module"></script>   
+
+    <label for="time-slider" class="time-filter">
+    Filter by time:
+
+    <input
+        id="time-slider"
+        type="range"
+        min="-1"
+        max="1440"
+        value="-1"
+    />
+
+    <time id="selected-time"></time>
+    <em id="any-time">(any time)</em>
+    </label>
 </head>
 <body>
     <div id="map">
