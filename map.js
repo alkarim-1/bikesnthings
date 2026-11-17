@@ -1,13 +1,14 @@
 
 import mapboxgl from 'https://cdn.jsdelivr.net/npm/mapbox-gl@2.15.0/+esm';
-
-// Import D3
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
-// Mapbox access token
+// Replace with your existing public Mapbox token
 mapboxgl.accessToken = 'pk.eyJ1IjoiYWxrYXJpbSIsImEiOiJjbXdrY2NpMDQwNWZ4Mnlva3YyMnh3czh5In0.MLNim6vXuctQaTZNXjyBKQ';
 
-// Initialize the map
+// =====================================
+// STEP 1: INITIALIZE MAP
+// =====================================
+
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
@@ -32,7 +33,7 @@ function getCoords(station) {
   return { cx: x, cy: y };
 }
 
-// Wait for map to load
+// Wait until map is loaded
 map.on('load', async () => {
 
   // =====================================
@@ -76,53 +77,123 @@ map.on('load', async () => {
   });
 
   // =====================================
-  // STEP 3: BLUEBIKES STATIONS
+  // STEP 3 & 4: BLUEBIKES TRAFFIC
   // =====================================
 
   try {
-    // Fetch station information
+    // Load station JSON
     const jsonurl =
       'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
 
     const jsonData = await d3.json(jsonurl);
 
+    let stations = jsonData.data.stations;
+
     console.log('Loaded JSON Data:', jsonData);
-
-    // Extract station array
-    const stations = jsonData.data.stations;
-
     console.log('Stations Array:', stations);
 
-    // Create SVG circles for each station
+    // =====================================
+    // STEP 4.1: LOAD TRAFFIC CSV
+    // =====================================
+
+    const trips = await d3.csv(
+      'https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv'
+    );
+
+    console.log('Loaded Trips:', trips);
+    console.log('Total trip records:', trips.length);
+
+    // =====================================
+    // STEP 4.2: CALCULATE TRAFFIC
+    // =====================================
+
+    // Count departures by station
+    const departures = d3.rollup(
+      trips,
+      (v) => v.length,
+      (d) => d.start_station_id
+    );
+
+    // Count arrivals by station
+    const arrivals = d3.rollup(
+      trips,
+      (v) => v.length,
+      (d) => d.end_station_id
+    );
+
+    // Add traffic properties to stations
+    stations = stations.map((station) => {
+      const id = station.short_name;
+
+      station.arrivals = arrivals.get(id) ?? 0;
+      station.departures = departures.get(id) ?? 0;
+      station.totalTraffic =
+        station.arrivals + station.departures;
+
+      return station;
+    });
+
+    console.log('Stations with Traffic:', stations);
+
+    // =====================================
+    // STEP 4.3: CREATE RADIUS SCALE
+    // =====================================
+
+    const radiusScale = d3
+      .scaleSqrt()
+      .domain([
+        0,
+        d3.max(stations, (d) => d.totalTraffic) || 1
+      ])
+      .range([0, 25]);
+
+    // Create SVG circles
     const circles = svg
       .selectAll('circle')
       .data(stations)
       .enter()
       .append('circle')
-      .attr('r', 5)
+      .attr('r', (d) => radiusScale(d.totalTraffic))
       .attr('fill', 'steelblue')
+      .attr('fill-opacity', 0.6)
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
-      .attr('opacity', 0.8);
+      .each(function (d) {
 
-    // Update circle positions
+        // =====================================
+        // STEP 4.4: ADD TOOLTIPS
+        // =====================================
+
+        d3.select(this)
+          .append('title')
+          .text(
+            `${d.name}
+${d.totalTraffic} trips
+(${d.departures} departures, ${d.arrivals} arrivals)`
+          );
+      });
+
+    // =====================================
+    // UPDATE MARKER POSITIONS
+    // =====================================
+
     function updatePositions() {
       circles
         .attr('cx', (d) => getCoords(d).cx)
         .attr('cy', (d) => getCoords(d).cy);
     }
 
-    // Initial position update
+    // Initial positioning
     updatePositions();
 
-    // Update markers when map moves
+    // Keep circles aligned when moving map
     map.on('move', updatePositions);
     map.on('zoom', updatePositions);
     map.on('resize', updatePositions);
     map.on('moveend', updatePositions);
 
   } catch (error) {
-    console.error('Error loading Bluebikes stations:', error);
+    console.error('Error loading Bluebikes data:', error);
   }
 
 });

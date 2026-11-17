@@ -16,3 +16,27 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
 }
+
+/* SVG overlay on the map */
+#map {
+  position: relative;
+}
+
+#map svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Bluebikes station markers */
+#map svg circle {
+  fill: steelblue;
+  fill-opacity: 0.6;
+  stroke: white;
+  stroke-width: 1px;
+  pointer-events: auto;
+}
