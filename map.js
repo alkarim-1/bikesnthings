@@ -1,11 +1,11 @@
-// Import Mapbox as an ESM module
+
 import mapboxgl from 'https://cdn.jsdelivr.net/npm/mapbox-gl@2.15.0/+esm';
 
-// Verify Mapbox is loaded
-console.log('Mapbox GL JS Loaded:', mapboxgl);
+// Import D3
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
-// Set your Mapbox access token
-mapboxgl.accessToken = 'YOUR_PUBLIC_MAPBOX_TOKEN';
+// Mapbox access token
+mapboxgl.accessToken = 'pk.eyJ1IjoiYWxrYXJpbSIsImEiOiJjbXdrY2NpMDQwNWZ4Mnlva3YyMnh3czh5In0.MLNim6vXuctQaTZNXjyBKQ';
 
 // Initialize the map
 const map = new mapboxgl.Map({
@@ -17,12 +17,27 @@ const map = new mapboxgl.Map({
   maxZoom: 18,
 });
 
-// Wait for the map to load
+// Select SVG overlay
+const svg = d3.select('#map').select('svg');
+
+// Convert station coordinates to map pixels
+function getCoords(station) {
+  const point = new mapboxgl.LngLat(
+    +station.lon,
+    +station.lat
+  );
+
+  const { x, y } = map.project(point);
+
+  return { cx: x, cy: y };
+}
+
+// Wait for map to load
 map.on('load', async () => {
 
-  // =================================
-  // BOSTON BIKE LANES
-  // =================================
+  // =====================================
+  // STEP 2: BOSTON BIKE LANES
+  // =====================================
 
   map.addSource('boston_route', {
     type: 'geojson',
@@ -40,9 +55,9 @@ map.on('load', async () => {
     },
   });
 
-  // =================================
-  // CAMBRIDGE BIKE LANES
-  // =================================
+  // =====================================
+  // STEP 2: CAMBRIDGE BIKE LANES
+  // =====================================
 
   map.addSource('cambridge_route', {
     type: 'geojson',
@@ -59,5 +74,55 @@ map.on('load', async () => {
       'line-opacity': 0.6,
     },
   });
+
+  // =====================================
+  // STEP 3: BLUEBIKES STATIONS
+  // =====================================
+
+  try {
+    // Fetch station information
+    const jsonurl =
+      'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
+
+    const jsonData = await d3.json(jsonurl);
+
+    console.log('Loaded JSON Data:', jsonData);
+
+    // Extract station array
+    const stations = jsonData.data.stations;
+
+    console.log('Stations Array:', stations);
+
+    // Create SVG circles for each station
+    const circles = svg
+      .selectAll('circle')
+      .data(stations)
+      .enter()
+      .append('circle')
+      .attr('r', 5)
+      .attr('fill', 'steelblue')
+      .attr('stroke', 'white')
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.8);
+
+    // Update circle positions
+    function updatePositions() {
+      circles
+        .attr('cx', (d) => getCoords(d).cx)
+        .attr('cy', (d) => getCoords(d).cy);
+    }
+
+    // Initial position update
+    updatePositions();
+
+    // Update markers when map moves
+    map.on('move', updatePositions);
+    map.on('zoom', updatePositions);
+    map.on('resize', updatePositions);
+    map.on('moveend', updatePositions);
+
+  } catch (error) {
+    console.error('Error loading Bluebikes stations:', error);
+  }
 
 });
